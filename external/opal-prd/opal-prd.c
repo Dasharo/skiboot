@@ -2299,6 +2299,62 @@ out_close:
 	return rc;
 }
 
+static int set_cpufreq_governor(void)
+{
+	struct dirent *dirent;
+	char *path = "/sys/devices/system/cpu/cpufreq";
+	DIR *dir;
+	int rc;
+
+	rc = -1;
+
+	dir = opendir(path);
+	if (!dir) {
+		pr_log(LOG_ERR, "PM: can't open %s: %m", path);
+		goto out_free;
+	}
+
+	for (;;) {
+		char *gpath;
+		int fd;
+
+		dirent = readdir(dir);
+		if (!dirent)
+			break;
+
+		if (strncmp(dirent->d_name, "policy", strlen("policy")))
+			continue;
+
+		rc = asprintf(&gpath, "%s/%s/scaling_governor", path, dirent->d_name);
+		if (rc < 0) {
+			pr_log(LOG_ERR, "PM: Error creating 'scaling_governor' path: %m");
+			goto out_free;
+		}
+
+		fd = open(gpath, O_RDWR);
+		if (fd < 0) {
+			pr_log(LOG_ERR, "PM: Failed to open %s :%m", gpath);
+			free(gpath);
+			goto out_free;
+		}
+
+		rc = write(fd, "performance", strlen("performance"));
+		if (rc != strlen("performance")) {
+			pr_log(LOG_ERR, "PM: Failed writing to scaling_governor %s: %m", gpath);
+			break;
+		}
+
+		free(gpath);
+		close(fd);
+	}
+
+out_free:
+	closedir(dir);
+	return rc;
+}
+
+static int send_htmgt_passthru(struct opal_prd_ctx *ctx, int argc, char *argv[]);
+
 static int send_occ_control(struct opal_prd_ctx *ctx, int argc, char *argv[])
 {
 	struct control_msg send_msg, *recv_msg = NULL;
@@ -2334,6 +2390,15 @@ static int send_occ_control(struct opal_prd_ctx *ctx, int argc, char *argv[])
 	} else if (!strcmp(op, "process-error")) {
 		send_msg.type = CONTROL_MSG_TEMP_OCC_ERROR;
 		send_msg.occ_error.chip = (uint64_t)chip;
+	} else if (!strcmp(op, "overclock-mode")) {
+		char *arg[] = {"0x09", "0x05"};
+
+		rc = set_cpufreq_governor();
+		return send_htmgt_passthru(ctx, 2, arg);
+	} else if (!strcmp(op, "nominal-mode")) {
+		char *arg[] = {"0x09", "0x03"};
+
+		return send_htmgt_passthru(ctx, 2, arg);
 	} else {
 		pr_log(LOG_ERR, "CTRL: Invalid OCC action '%s'", op);
 		return -1;
@@ -2504,7 +2569,7 @@ static void usage(const char *progname)
 	printf("Usage:\n");
 	printf("\t%s [--debug] [--file <hbrt-image>] [--pnor <device>]\n",
 			progname);
-	printf("\t%s occ <enable|disable|reset [chip]>\n", progname);
+	printf("\t%s occ <enable|disable|reset|overclock-mode|nominal-mode [chip]>\n", progname);
 	printf("\t%s pm-complex reset [chip]>\n", progname);
 	printf("\t%s htmgt-passthru <bytes...>\n", progname);
 	printf("\t%s override <FILE>\n", progname);
