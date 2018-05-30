@@ -309,6 +309,15 @@ int parse_i2c_devs(const struct HDIF_common_hdr *hdr, int idata_index,
 		    && dev_addr < 0x58) {
 			compat = "spd";
 			name = "eeprom";
+		} else if (proc_gen == proc_gen_p9 && dev->type == 0x2 &&
+		    dev->i2cm_engine == 1 && dev->i2cm_port == 0) {
+			/* HACK
+			 * Module VPD is 64k, not 16k
+			 * Hostboot is only indicating generic VPD type here
+			 * Override to the 64k at24 part
+			 */
+			compat = "atmel,24c512";
+			name = "eeprom";
 		} else if (type) {
 			compat = type->compat;
 			name = type->name;
