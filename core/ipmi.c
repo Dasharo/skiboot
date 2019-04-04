@@ -182,8 +182,16 @@ void ipmi_queue_msg_sync(struct ipmi_msg *msg)
 	ipmi_queue_msg_head(msg);
 	unlock(&sync_lock);
 
-	while (sync_msg == msg)
+	/*
+	 * BT response handling relies on a timer. Run timers once in
+	 * a while.
+	 *
+	 * TODO (clg): implement a timeout for IPMI synchronous messages
+	 */
+	while (sync_msg == msg) {
+		check_timers(0);
 		time_wait_ms(10);
+	}
 }
 
 static void ipmi_read_event_complete(struct ipmi_msg *msg)
