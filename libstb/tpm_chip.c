@@ -24,6 +24,7 @@
 #include "container.h"
 #include "tpm_chip.h"
 #include "drivers/tpm_i2c_nuvoton.h"
+#include "drivers/tpm_i2c_infineon.h"
 #include "tss/trustedbootCmds.H"
 
 /* For debugging only */
@@ -179,6 +180,7 @@ int tpm_init(void)
 
 	/* tpm drivers supported */
 	tpm_i2c_nuvoton_probe();
+	tpm_i2c_infineon_probe();
 
 	if (list_empty(&tpm_list)) {
 		prlog(PR_INFO, "no compatible tpm device found!\n");
