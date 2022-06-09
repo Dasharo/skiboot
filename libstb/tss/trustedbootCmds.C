@@ -70,6 +70,27 @@ errlHndl_t tpmTransmitCommand(TpmTarget * io_target,
 
     do
     {
+        if (io_target->dev->tpm_version != 0x0200)
+        {
+            TRACFCOMP( g_trac_trustedboot,
+                       "Unsupported TPM version: 0x%04x",
+                       io_target->dev->tpm_version );
+
+            /*@
+             * @errortype
+             * @reasoncode     RC_TPM_COMMAND_FAIL
+             * @severity       ERRL_SEV_UNRECOVERABLE
+             * @moduleid       MOD_TPM_CMD_PCREXTEND
+             * @userdata1      TPM version of the device.
+             * @devdesc        Unsupported TPM version.
+             */
+            err = tpmCreateErrorLog(MOD_TPM_CMD_PCREXTEND,
+                                    RC_TPM_COMMAND_FAIL,
+                                    io_target->dev->tpm_version,
+                                    0);
+            break;
+        }
+
         transmitBuf = (uint8_t*)malloc(MAX_TRANSMIT_SIZE);
 
         // Marshal the data into a byte array for transfer to the TPM

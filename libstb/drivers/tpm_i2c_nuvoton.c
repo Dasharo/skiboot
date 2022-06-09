@@ -536,6 +536,7 @@ void tpm_i2c_nuvoton_probe(void)
 			continue;
 		tpm_device = (struct tpm_dev*) malloc(sizeof(struct tpm_dev));
 		assert(tpm_device);
+		tpm_device->tpm_version = 0x0200;
 		/*
 		 * Read TPM device address and bus id. Make sure the properties
 		 * really exist if the default value is returned.

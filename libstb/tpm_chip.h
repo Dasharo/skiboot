@@ -29,6 +29,9 @@ struct tpm_dev {
 
 	/* TPM address in the bus */
 	int i2c_addr;
+
+	/* TPM version to use (e.g., 0x0102 (1.2) or 0x0200 (2.0)) */
+	int tpm_version;
 };
 
 struct tpm_driver {
