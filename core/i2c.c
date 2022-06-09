@@ -176,8 +176,8 @@ int64_t i2c_request_sync(struct i2c_request *req)
 		lwsync();
 		rc = req->result;
 
-		/* retry on NACK, otherwise exit */
-		if (rc != OPAL_I2C_NACK_RCVD)
+		/* retry on NACK and arbitration loss, otherwise exit */
+		if (rc != OPAL_I2C_NACK_RCVD && rc != OPAL_I2C_ARBT_LOST)
 			break;
 		req->req_state = i2c_req_new;
 	}
