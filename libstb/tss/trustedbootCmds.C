@@ -751,6 +751,99 @@ errlHndl_t tpmCmdPcrExtend(TpmTarget * io_target,
                                 TPM_ALG_INVALID_ID, NULL, 0);
 }
 
+static errlHndl_t tpmCmdPcrExtend2HashTpm12(TpmTarget * io_target,
+                                            TPM_Pcr i_pcr,
+                                            TPM_Alg_Id i_algId_1,
+                                            const uint8_t* i_digest_1,
+                                            size_t  i_digestSize_1,
+                                            TPM_Alg_Id i_algId_2,
+                                            const uint8_t* i_digest_2,
+                                            size_t  i_digestSize_2)
+{
+    errlHndl_t err = TB_SUCCESS;
+    uint8_t *dataBuf;
+    struct TPM_Extend_In *cmd;
+    struct TPM_Extend_Out *resp;
+
+    if (i_algId_1 != TPM_ALG_SHA1 && i_algId_2 != TPM_ALG_SHA1)
+    {
+            TRACFCOMP( g_trac_trustedboot,
+                       "TPM PCR EXTEND ARG FAILURE: no SHA1" );
+            /*@
+             * @errortype
+             * @reasoncode     RC_TPM_INVALID_ARGS
+             * @severity       ERRL_SEV_UNRECOVERABLE
+             * @moduleid       MOD_TPM_CMD_PCREXTEND
+             * @userdata1      PCR
+             * @devdesc        Unmarshaling error detected
+             */
+            err = tpmCreateErrorLog(MOD_TPM_CMD_PCREXTEND,
+                                    RC_TPM_INVALID_ARGS,
+                                    i_pcr,
+                                    0);
+            return err;
+    }
+
+    if (i_algId_2 == TPM_ALG_SHA1)
+    {
+            i_algId_1 = i_algId_2;
+            i_digest_1 = i_digest_2;
+            i_digestSize_1 = i_digestSize_2;
+    }
+
+    dataBuf = (uint8_t*)malloc(MAX_TRANSMIT_SIZE);
+    cmd = (struct TPM_Extend_In*)dataBuf;
+    resp = (struct TPM_Extend_Out*)dataBuf;
+
+    cmd->tag = TPM_TAG_RQU_COMMAND;
+    cmd->size = sizeof(*cmd);
+    cmd->cmdOrdinal = TPM_ORD_Extend;
+    cmd->pcr = i_pcr;
+    memcpy(cmd->inDigest, i_digest_1, i_digestSize_1);
+
+    do {
+        err = tpmTransmit(io_target,
+                          dataBuf,
+                          cmd->size,
+                          MAX_TRANSMIT_SIZE);
+        if (TB_SUCCESS != err)
+        {
+            TRACFCOMP( g_trac_trustedboot,
+                       "TPM PCRExtend Transmit Fail" );
+            break;
+        }
+
+        if (resp->returnCode != 0)
+        {
+            TRACFCOMP( g_trac_trustedboot,
+                       "TPM PCRExtend OP Fail Ret(%X) ExSize(%d) ",
+                       resp->returnCode,
+                       (int)sizeof(TPM2_BaseOut) );
+
+            /*@
+             * @errortype
+             * @reasoncode     RC_TPM_COMMAND_FAIL
+             * @severity       ERRL_SEV_UNRECOVERABLE
+             * @moduleid       MOD_TPM_CMD_PCREXTEND
+             * @userdata1      returnCode
+             * @devdesc        PCR extend command failure.
+             */
+            err = tpmCreateErrorLog(MOD_TPM_CMD_PCREXTEND,
+                                    RC_TPM_COMMAND_FAIL,
+                                    resp->returnCode,
+                                    0);
+            break;
+        }
+    } while ( 0 );
+
+    free(dataBuf);
+
+    TRACUCOMP( g_trac_trustedboot,
+               "<<tpmCmdPcrExtend2Hash() - %s",
+               ((TB_SUCCESS == err) ? "No Error" : "With Error") );
+    return err;
+}
+
 errlHndl_t tpmCmdPcrExtend2Hash(TpmTarget * io_target,
                                 TPM_Pcr i_pcr,
                                 TPM_Alg_Id i_algId_1,
@@ -768,6 +861,17 @@ errlHndl_t tpmCmdPcrExtend2Hash(TpmTarget * io_target,
     TPM2_BaseOut* resp = (TPM2_BaseOut*)dataBuf;
     TPM2_ExtendIn* cmd = (TPM2_ExtendIn*)dataBuf;
 
+    if (io_target->dev->tpm_version == 0x0102)
+    {
+        return tpmCmdPcrExtend2HashTpm12(io_target,
+                                         i_pcr,
+                                         i_algId_1,
+                                         i_digest_1,
+                                         i_digestSize_1,
+                                         i_algId_2,
+                                         i_digest_2,
+                                         i_digestSize_2);
+    }
 
     TRACDCOMP( g_trac_trustedboot,
                ">>tpmCmdPcrExtend2Hash()" );

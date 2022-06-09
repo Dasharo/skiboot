@@ -155,6 +155,30 @@ namespace TRUSTEDBOOT
 
     };
 
+    // TPM 1.2 definitions
+
+    enum
+    {
+        TPM_TAG_RQU_COMMAND = 0xc1,
+        TPM_ORD_Extend = 0x14,
+    };
+
+    struct TPM_Extend_In
+    {
+        uint16_t tag;
+        uint32_t size;
+        uint32_t cmdOrdinal;
+        uint32_t pcr;
+        uint8_t inDigest[20];
+    } PACKED;
+
+    struct TPM_Extend_Out
+    {
+        uint16_t tag;
+        uint32_t size;
+        uint32_t returnCode;
+        uint8_t outDigest[20];
+    } PACKED;
 
     // Command structures taken from Trusted Platform Module Library Part 3:
     //    Commands Family "2.0"
