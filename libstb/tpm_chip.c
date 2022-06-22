@@ -100,7 +100,16 @@ int tpm_register_chip(struct dt_node *node, struct tpm_dev *dev,
 	 * 'doc/device-tree/tpm.rst'
 	 */
 
-	sml_base = dt_prop_get_u64_def(node, "linux,sml-base", 0);
+	/*
+	 * Use ibm,sml-base and ibm,sml-size if present and give them higher
+	 * priority than to linux,sml-base and linux,sml-size. This way log can
+	 * be passed only to skiboot, which is beneficial if Linux has trouble
+	 * with it. Linux does fine if these properties are not provided.
+	 */
+
+	sml_base = dt_prop_get_u64_def(node, "ibm,sml-base", 0);
+	if (!sml_base && !dt_find_property(node, "ibm,sml-base"))
+		sml_base = dt_prop_get_u64_def(node, "linux,sml-base", 0);
 
 	/* Check if sml-base is really 0 or it just doesn't exist */
 	if (!sml_base &&
@@ -116,7 +125,9 @@ int tpm_register_chip(struct dt_node *node, struct tpm_dev *dev,
 		goto disable;
 	}
 
-	sml_size = dt_prop_get_u32_def(node, "linux,sml-size", 0);
+	sml_size = dt_prop_get_u32_def(node, "ibm,sml-size", 0);
+	if (!sml_size && !dt_find_property(node, "ibm,sml-size"))
+		sml_size = dt_prop_get_u32_def(node, "linux,sml-size", 0);
 
 	if (!sml_size) {
 		/**
