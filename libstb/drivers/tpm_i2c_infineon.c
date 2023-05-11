@@ -78,8 +78,17 @@ static int tpm_status_read_byte(uint8_t offset, uint8_t *byte)
 {
 	int rc = tpm_i2c_request_send(tpm_device, SMBUS_READ, offset, 1, byte,
 				      sizeof(uint8_t));
-	if (rc == 0 && offset == TPM_STS && *byte == 0xff)
-		return STB_DRIVER_ERROR;
+	if (rc == 0 && offset == TPM_STS && *byte == 0xff) {
+		/*
+		 * According to src/drivers/i2c/tpm.c driver in coreboot:
+		 *
+		 *     Some TPMs sometimes randomly return 0xff.
+		 *
+		 * Do not error in this case, just replace result with zero to
+		 * cause another try.
+		 */
+		*byte = 0;
+	}
 	return rc;
 }
 
