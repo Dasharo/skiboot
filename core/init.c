@@ -1195,6 +1195,8 @@ void __noreturn __nomcount main_cpu_entry(const void *fdt)
 
 	op_display(OP_LOG, OP_MOD_INIT, 0x0002);
 
+	disable_fast_reboot("Interferes with Heads' use of TPM");
+
 	/*
 	 * On some POWER9 BMC systems, we need to initialise the OCC
 	 * before the NPU to facilitate NVLink/OpenCAPI presence
